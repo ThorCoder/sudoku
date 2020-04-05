@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+*{margin:0 auto;padding:0;}
+#box{width:500px;height:500px;}
+table{width:100%;height:100%;font-size:20px;text-align:center;font-weight:bold;}
+table table{font-size:12px;line-height:12px;color:#111111;font-weight:normal;}
+td{border:1px solid #ccc;width:11.11%;height:11.11%;}
+td td{border:0 none;}
+#tool{text-align:center;}
+#tool button{padding:4px 6px;}
+#fast{text-align:center;}
+#fast a{display:inline-block;cursor:pointer;background:#ddd;border:1px solid #ccc;padding:4px 8px;margin:0 4px;}
+.line{position:absolute;background:#ff0000;z-index:99;left:50%;}
+.liney{width:1px;height:500px;}
+.line1{margin-left:-85px;}
+.line2{	margin-left:80px;}
+.linex{width:500px;height:1px;	margin-left:-250px;}
+.line3{top:169px;}
+.line4{top:335px;}
+</style>
+</head><body onkeypress="setNo(event)">
+<div class="line liney line1"></div>
+<div class="line liney line2"></div>
+<div class="line linex line3"></div>
+<div class="line linex line4"></div>
+<table id="box"></table>
+<div id="tool">
+	<button onclick="createBox()">重新开始</button>
+	<button onclick="run()">填数完毕</button>
+</div>
+<script>
+var nowObj,nowCol,nowRow;//当前选中对象 行 列号
+var rectLen=9;//9*9
+var nowColor;//当前颜色
+var maxArr=new Array(rectLen);	//三维数组 第三维存可能值(对象)，否则第三维存确切值(数字)
+
+//初始化
+function createBox(){
+	var tmpMayBeObj={};
+	for(var i=0;i<rectLen;i++){
+		tmpMayBeObj[i+1]=true;
+	}
+	tmpMayBeObj=JSON.stringify(tmpMayBeObj);
+	var tmpCellMayBe=new Array();
+	for(var i=0;i<rectLen;i++){
+		tmpCellMayBe[i]=JSON.parse(tmpMayBeObj);
+	}
+	tmpCellMayBe=JSON.stringify(tmpCellMayBe);
+	for(var i=0;i<rectLen;i++){
+		maxArr[i]=JSON.parse(tmpCellMayBe);
+	}
+	var litLen=Math.sqrt(rectLen);
+	var cont='';
+	for(var i=0;i<rectLen;i++){
+		cont+="<tr>";
+		for(var j=0;j<rectLen;j++){
+			cont+='<td id="td'+i+j+'" onclick="selNo(this,'+i+','+j+')"><table>';
+			cont+=('<tr>'+'<td></td>'.repeat(litLen)+'</tr>').repeat(litLen);
+			cont+='</table></td>';
+		}
+		cont+="</tr>";
+	}
+	document.getElementById('box').innerHTML=cont;
+}
+
+//单元格点击事件
+function selNo(obj,i,j){
+	//记录点击对象和坐标
+	nowObj=obj;
+	nowCol=i;
+	nowRow=j;
+}
+
+//输入数字
+function setNo(event){
+	if(window.event){
+		keynum = window.event.keyCode;
+	}else if(event.which){
+		keynum = event.which;
+	}
+	if(keynum>=49 && keynum<=57){
+		keynum-=48;
+	}else{
+		return false;
+	}
+	if(nowObj){
+		setData(nowCol,nowRow,keynum);
+	}
+}
+
+//设置值并删除相关单元可能值
+function setData(i,j,value){
+	var tmpTdObj=document.getElementById('td'+i+j);
+	tmpTdObj.innerHTML=value;
+	tmpTdObj.style.color=nowColor;
+	document.getElementById('td'+i+j).innerHTML=value;
+	maxArr[i][j]=value;
+	console.log(i+"-"+j+'=>'+value);
+	
+	var funcName=function(x,y){
+		if(typeof maxArr[x][y]=='number'){
+			return 0;
+		}
+		delete maxArr[x][y][value];
+	};
+	runRelative(i,j,funcName);
+}
+
+//跑循环Run
+function runXY(funcName){
+	var AC=0;
+	for(var i=0;i<rectLen;i++){
+		for(var j=0;j<rectLen;j++){
+			if(typeof maxArr[i][j]=='number'){
+				continue;
+			}
+			funcName(i,j);
+			var mayBe=maxArr[i][j];
+			if(typeof mayBe=='number'){
+				setData(i,j,mayBe);
+				AC+=1;
+				continue;
+			}
+			//如果不是确切值，填入它的可能值
+			miniTdList=document.getElementById('td'+i+j).querySelectorAll('td');
+			for(var x=0;x<rectLen;x++){
+				if(!mayBe[x+1]){
+					miniTdList[x].innerHTML='';
+				}else{
+					miniTdList[x].innerHTML=x+1;
+				}
+			}
+		}
+	}
+	return AC;
+}
+
+//跑相关
+function runRelative(col,row,funcName,before,after){
+	//x y 宫格
+	if(before) before(0);
+	for(var i=0;i<rectLen;i++){
+		funcName(col,i);
+	}
+	if(after) after(0);
+	if(before) before(1);
+	for(var i=0;i<rectLen;i++){
+		funcName(i,row);
+	}
+	if(after) after(1);
+	if(before) before(2);
+	var bSqrt=Math.sqrt(rectLen);
+	var bCol=col-col%bSqrt;
+	var bRow=row-row%bSqrt;
+	for(var i=0;i<bSqrt;i++){
+		for(var j=0;j<bSqrt;j++){
+			funcName(bCol+i,bRow+j);
+		}
+	}
+	if(after) after(2);
+}
+
+//根据相关单元确定值，定位本单元可能值
+//唯一法
+function setMayBe(col,row){
+	var funcName=function(x,y){
+		if(x==col&&y==row){
+			return 0;
+		}
+		tempVar=maxArr[x][y];
+		if(typeof tempVar=='number'){
+			delete maxArr[col][row][tempVar];
+		}
+	};
+	runRelative(col,row,funcName);
+	
+	var mayBe=Object.keys(maxArr[col][row]);
+	if(mayBe.length==1){
+		maxArr[col][row]=mayBe[0]*1;
+	}
+}
+
+//从唯一出现的可能值，确定单元值
+//隐含唯一法
+function tryMaybe(col,row){
+		runRelative(col,row,function(x,y){
+			if(x==col && y==row) return 0;
+			var tempVar=maxArr[x][y];
+			if(typeof tempVar=='number'){
+				return 0;
+			}
+			for(var key in tempVar){
+				delete window.tmpObject[key];
+			}
+		},function(step){
+			window.tmpObject=Object.assign({}, maxArr[col][row]);
+		},function(step){
+			var tempArr=Object.keys(window.tmpObject);
+			if(tempArr.length==1){
+				maxArr[col][row]=tempArr[0]*1;
+			}
+		});
+	}
+
+//二对数排除可能值
+//数对、三链、...N链
+function sameMaybe(col,row){
+	runRelative(col,row,function(x,y){
+		if(x==col && y==row) return 0;
+		var tempVar=maxArr[x][y];
+		if(typeof tempVar=='number'){
+			return 0;
+		}
+		if(Object.keys(tempVar).sort().toString()==window.tmpObject.sort().toString()){
+			window.tmpSaveNum++;
+			window.tmpSaveObject[x+'-'+y]=true;
+		}
+	},function(step){
+		window.tmpObject=Object.keys(maxArr[col][row]);
+		window.tmpSaveNum=1;		//记录可能值完全一样的格数
+		window.tmpSaveObject={};	//记录可能值完全一样的对象
+		window.tmpSaveObject[col+"-"+row]=true;
+	},function(step){
+		if(window.tmpSaveNum!=window.tmpObject.length){////记录可能值长度和个数一样则为对数/3链...
+			return ;
+		}
+		var removeMaybe=function(targetX,targetY){
+			if(typeof maxArr[targetX][targetY]=='number')
+			return ;
+			if(!window.tmpSaveObject[targetX+'-'+targetY]){
+				for(var key in maxArr[col][row]){
+					delete maxArr[targetX][targetY][key];
+				}
+			}
+		};
+		if(step==0){
+			for(var i=0;i<rectLen;i++){
+				removeMaybe(col,i);
+			}
+		}
+		if(step==1){
+			for(var i=0;i<rectLen;i++){
+				removeMaybe(i,row);
+			}
+		}
+		if(step==2){
+			var bSqrt=Math.sqrt(rectLen);
+			var bCol=col-col%bSqrt;
+			var bRow=row-row%bSqrt;
+			for(var i=0;i<bSqrt;i++){
+				for(var j=0;j<bSqrt;j++){
+					removeMaybe(bCol+i,bRow+j);
+				}
+			}
+		}
+	});
+};
+
+function run(){
+	var AC=0;
+	console.log("setMayBe");
+	nowColor='green';
+	while(runXY(setMayBe)>0){
+	}
+	
+	nowColor='#FFFF00';
+	console.log("tryMaybe");
+	AC+=runXY(tryMaybe);
+	
+	nowColor='#FF0000';
+	console.log("sameMaybe");
+	AC+=runXY(sameMaybe);
+	while(runXY(setMayBe)>0){
+	}
+	if(AC>0){
+		run();
+	}
+}
+createBox();
+</script>
+</body></html>
