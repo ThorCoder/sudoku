@@ -42,10 +42,9 @@ function createBox(){
 	for(var i=0;i<rectLen;i++){
 		tmpMayBeObj[i+1]=true;
 	}
-	tmpMayBeObj=JSON.stringify(tmpMayBeObj);
 	var tmpCellMayBe=new Array();
 	for(var i=0;i<rectLen;i++){
-		tmpCellMayBe[i]=JSON.parse(tmpMayBeObj);
+		tmpCellMayBe[i]=tmpMayBeObj;
 	}
 	tmpCellMayBe=JSON.stringify(tmpCellMayBe);
 	for(var i=0;i<rectLen;i++){
