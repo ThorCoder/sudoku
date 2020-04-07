@@ -32,7 +32,7 @@ var nowCol=-1,nowRow=-1;//当前选中对象的行列号
 var rectLen=9;//9*9
 var nowColor;
 var maxArr=new Array(rectLen);	//第三维存可能值(对象)，否则为确切值(数字)
-
+var AC=0;//每次循环前置0
 //初始化
 function createBox(){
 	var tmpMayBeObj={};
@@ -73,12 +73,16 @@ function setNo(event){
 		return false;
 	}
 	if(nowCol>-1 && nowRow>-1){
+		if(typeof maxArr[nowCol][nowRow]=='number'){
+			return console.log(nowCol+'-'+nowRow+'已填入值'+maxArr[nowCol][nowRow]);
+		}
 		setData(nowCol,nowRow,keynum-48);
 	}
 }
 
 //设置值并删除相关单元可能值
 function setData(i,j,value){
+	AC++;
 	var tmpTdObj=document.getElementById('td'+i+j);
 	tmpTdObj.innerHTML=value;
 	tmpTdObj.style.color=nowColor;
@@ -92,7 +96,7 @@ function setData(i,j,value){
 
 //跑循环Run
 function runXY(funcName){
-	var AC=0;
+	AC=0;
 	for(var i=0;i<rectLen;i++){
 		for(var j=0;j<rectLen;j++){
 			if(typeof maxArr[i][j]=='number'){
@@ -103,7 +107,6 @@ function runXY(funcName){
 			if(typeof mayBe=='number'){
 				setData(i,j,mayBe);
 				console.log(i+"-"+j+'=>'+mayBe);
-				AC++;
 				continue;
 			}
 			//如果不是确切值，填入它的可能值
@@ -148,7 +151,7 @@ function runRelative(col,row,funcName,before,after,rTarget=-1){
 	}
 }
 
-//根据相关单元确定值，定位本单元可能值
+//根据相关单元确定值，排除本单元可能值
 //唯一法
 function setMayBe(col,row){
 	var funcName=function(x,y){
@@ -168,7 +171,7 @@ function setMayBe(col,row){
 }
 
 //从唯一出现的可能值，确定单元值
-//隐含唯一法
+//隐含唯一法,包含了唯一法
 function tryMaybe(col,row){
 		runRelative(col,row,function(x,y){
 			if(x!=col || y!=row){
@@ -190,11 +193,12 @@ function tryMaybe(col,row){
 	}
 
 //二对数排除可能值
-//数对、三链、...N链
+//数对、三链、...N链 5-9链，其实无实际意义
 function sameMaybe(col,row){
 	runRelative(col,row,function(x,y){
 		if(x==col && y==row) return 0;
 		var tempVar=maxArr[x][y];
+		if(window.tmpObject.keys.length>rectLen/2){return;}//
 		if(typeof tempVar=='number'){
 			return 0;
 		}
@@ -213,11 +217,16 @@ function sameMaybe(col,row){
 		if(window.tmpObject.nums!=window.tmpObject.keys.length){////记录可能值长度和个数一样则为对数/3链...
 			return ;
 		}
+		if(window.tmpObject.keys.length>rectLen/2){console.log(col+'--'+row);return ;}	//
 		var removeMaybe=function(targetX,targetY){
 			if(typeof maxArr[targetX][targetY]=='number')return ;
 			if(!window.tmpObject.sameObj[targetX+'-'+targetY]){
 				for(var key in maxArr[col][row]){
 					delete maxArr[targetX][targetY][key];
+					var tempArr=Object.keys(maxArr[targetX][targetY]);
+					if(tempArr.length==1){
+						setData(targetX,targetY,tempArr[0]*1);//外部不会判断非target其他单元
+					}
 				}
 			}
 		};
@@ -225,22 +234,82 @@ function sameMaybe(col,row){
 	});
 };
 
+
+
+//隐含 唯一、数对、三链...N链,可再次执行sameMaybe确定确切值
+function trySameMaybe(col,row){
+	runRelative(col,row,function(x,y){
+		var tempVar=maxArr[x][y];
+		if(typeof tempVar=='number'){
+			return 0;
+		}
+		for(var key in tempVar){
+			if(!window.tmpObject[key]){
+				window.tmpObject[key]=new Array();
+			}
+			window.tmpObject[key].push(x+'.'+y);
+		}
+	},function(step){
+		window.tmpObject={};//key为数字-value为坐标数组
+	},function(step){
+		var total_num={};//key为次数-value为数字
+		for(var key in window.tmpObject){
+			var total=window.tmpObject[key].length;
+			if(!total_num[total]) total_num[total]={};
+			total_num[total][key]=true;
+		}
+		for(var total in total_num){
+			if(total!=Object.keys(total_num[total]).length){//判断出现N次的有N个数则继续
+				continue;
+			}
+			var sString='';
+			var canRemove=true;
+			for(var nums in total_num[total]){
+				sString=sString==''?window.tmpObject[nums].sort().toString():sString;
+				if(sString!=window.tmpObject[nums].sort().toString()){
+					canRemove=false;break;
+				}
+			}
+			if(!canRemove) continue;
+			var setNo=Object.keys(total_num[total]);
+			if(setNo.length==1)setNo=setNo[0]*1;
+			else setNo=JSON.stringify(total_num[total]);
+			for(var num in total_num[total]){
+				for(var i in window.tmpObject[num]){
+					var xy=window.tmpObject[num][i].split('.');
+					if(typeof setNo=='number'){
+						setData(xy[0],xy[1],setNo);
+						continue;
+					}
+					maxArr[xy[0]][xy[1]]=JSON.parse(setNo);
+				}
+			}
+		}
+		
+		
+	});
+};
 function run(){
-	var AC=0;
+	var acRun=0;
 	console.log("setMayBe");
 	nowColor='green';
 	while(runXY(setMayBe)>0){}
 	
-	nowColor='#FFFF00';
+	nowColor='blue';
 	console.log("tryMaybe");
-	AC+=runXY(tryMaybe);
+	acRun+=runXY(tryMaybe);
+	
+	nowColor='#FFFF00';
+	console.log("sameMaybe");
+	acRun+=runXY(sameMaybe);
+	while(runXY(setMayBe)>0){}
 	
 	nowColor='#FF0000';
-	console.log("sameMaybe");
-	AC+=runXY(sameMaybe);
+	console.log("trySameMaybe");
+	acRun+=runXY(trySameMaybe);
 	while(runXY(setMayBe)>0){}
 	nowColor='';
-	if(AC>0){
+	if(acRun>0){
 		run();
 	}
 }
