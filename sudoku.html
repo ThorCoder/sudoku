@@ -116,24 +116,25 @@ function runXY(funcName){
 	return AC;
 }
 
+
 //遍历目标的相关单元格
-function runRelative(col,row,funcName,before,after,rTarget){
+function runRelative(col,row,funcName,before,after,rTarget=-1){
 	//同行 列 宫格 rTarget=0为col一样 1为row一样 2为宫格一样
-	if(!rTarget || rTarget==0){
+	if(rTarget==-1 || rTarget==0){
 		if(before) before(0);
 		for(var i=0;i<rectLen;i++){
 			funcName(col,i);
 		}
 		if(after) after(0);
 	}
-	if(!rTarget || rTarget==1){
+	if(rTarget==-1 || rTarget==1){
 		if(before) before(1);
 		for(var i=0;i<rectLen;i++){
 			funcName(i,row);
 		}
 		if(after) after(1);
 	}
-	if(!rTarget || rTarget==1){
+	if(rTarget==-1 || rTarget==2){
 		if(before) before(2);
 		var bSqrt=Math.sqrt(rectLen);
 		var bCol=col-col%bSqrt;
@@ -197,22 +198,24 @@ function sameMaybe(col,row){
 		if(typeof tempVar=='number'){
 			return 0;
 		}
-		if(Object.keys(tempVar).sort().toString()==window.tmpObject.sort().toString()){
-			window.tmpSaveNum++;
-			window.tmpSaveObject[x+'-'+y]=true;
+		if(Object.keys(tempVar).sort().toString()==window.tmpObject.keys.sort().toString()){
+			window.tmpObject.nums++;
+			window.tmpObject.sameObj[x+'-'+y]=true;
 		}
 	},function(step){
-		window.tmpObject=Object.keys(maxArr[col][row]);
-		window.tmpSaveNum=1;		//记录可能值完全一样的格数
-		window.tmpSaveObject={};	//记录可能值完全一样的对象
-		window.tmpSaveObject[col+"-"+row]=true;
+		window.tmpObject={
+			'keys':Object.keys(maxArr[col][row]),
+			'nums':1,			//记录可能值完全一样的格数
+			'sameObj':{}		//记录可能值完全一样的对象
+		}
+		window.tmpObject.sameObj[col+"-"+row]=true;
 	},function(step){
-		if(window.tmpSaveNum!=window.tmpObject.length){////记录可能值长度和个数一样则为对数/3链...
+		if(window.tmpObject.nums!=window.tmpObject.keys.length){////记录可能值长度和个数一样则为对数/3链...
 			return ;
 		}
 		var removeMaybe=function(targetX,targetY){
 			if(typeof maxArr[targetX][targetY]=='number')return ;
-			if(!window.tmpSaveObject[targetX+'-'+targetY]){
+			if(!window.tmpObject.sameObj[targetX+'-'+targetY]){
 				for(var key in maxArr[col][row]){
 					delete maxArr[targetX][targetY][key];
 				}
