@@ -244,6 +244,9 @@ function trySameMaybe(col,row){
 			return 0;
 		}
 		for(var key in tempVar){
+			if(!maxArr[col][row][key]){
+				continue;
+			}
 			if(!window.tmpObject[key]){
 				window.tmpObject[key]=new Array();
 			}
@@ -308,6 +311,7 @@ function run(){
 	console.log("trySameMaybe");
 	acRun+=runXY(trySameMaybe);
 	while(runXY(setMayBe)>0){}
+	
 	nowColor='';
 	if(acRun>0){
 		run();
