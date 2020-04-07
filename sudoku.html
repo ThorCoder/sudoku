@@ -42,11 +42,7 @@ function createBox(){
 	for(var i=0;i<rectLen;i++){
 		tmpMayBeObj[i+1]=true;
 	}
-	var tmpCellMayBe=new Array();
-	for(var i=0;i<rectLen;i++){
-		tmpCellMayBe[i]=tmpMayBeObj;
-	}
-	tmpCellMayBe=JSON.stringify(tmpCellMayBe);
+	var tmpCellMayBe=JSON.stringify(new Array(rectLen).fill(tmpMayBeObj));
 	for(var i=0;i<rectLen;i++){
 		maxArr[i]=JSON.parse(tmpCellMayBe);
 	}
