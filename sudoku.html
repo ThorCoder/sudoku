@@ -3,22 +3,19 @@
 <meta charset="UTF-8">
 <style>
 *{margin:0 auto;padding:0;}
-#box{width:500px;height:500px;}
-table{width:100%;height:100%;font-size:20px;text-align:center;font-weight:bold;}
-table table{font-size:12px;line-height:12px;color:#111111;font-weight:normal;}
+#box{width:500px;height:500px;font-size:20px;text-align:center;font-weight:bold;}
+table table{width:100%;height:100%;font-size:12px;line-height:12px;color:#111;font-weight:normal;}
 td{border:1px solid #ccc;width:11.11%;height:11.11%;}
 td td{border:0 none;}
 #tool{text-align:center;}
 #tool button{padding:4px 6px;}
-#fast{text-align:center;}
-#fast a{display:inline-block;cursor:pointer;background:#ddd;border:1px solid #ccc;padding:4px 8px;margin:0 4px;}
 .line{position:absolute;background:#ff0000;z-index:99;left:50%;}
 .liney{width:1px;height:500px;}
 .line1{margin-left:-85px;}
 .line2{	margin-left:80px;}
-.linex{width:500px;height:1px;	margin-left:-250px;}
+.linex{width:500px;height:1px;margin-left:-250px;}
 .line3{top:169px;}
-.line4{top:335px;}
+.line4{top:334px;}
 </style>
 </head><body onkeypress="setNo(event)">
 <div class="line liney line1"></div>
@@ -31,10 +28,10 @@ td td{border:0 none;}
 	<button onclick="run()">填数完毕</button>
 </div>
 <script>
-var nowObj,nowCol,nowRow;//当前选中对象 行 列号
+var nowCol=-1,nowRow=-1;//当前选中对象的行列号
 var rectLen=9;//9*9
-var nowColor;//当前颜色
-var maxArr=new Array(rectLen);	//三维数组 第三维存可能值(对象)，否则第三维存确切值(数字)
+var nowColor;
+var maxArr=new Array(rectLen);	//第三维存可能值(对象)，否则为确切值(数字)
 
 //初始化
 function createBox(){
@@ -42,16 +39,16 @@ function createBox(){
 	for(var i=0;i<rectLen;i++){
 		tmpMayBeObj[i+1]=true;
 	}
-	var tmpCellMayBe=JSON.stringify(new Array(rectLen).fill(tmpMayBeObj));
+	tmpMayBeObj=JSON.stringify(new Array(rectLen).fill(tmpMayBeObj));
 	for(var i=0;i<rectLen;i++){
-		maxArr[i]=JSON.parse(tmpCellMayBe);
+		maxArr[i]=JSON.parse(tmpMayBeObj);
 	}
 	var litLen=Math.sqrt(rectLen);
 	var cont='';
 	for(var i=0;i<rectLen;i++){
 		cont+="<tr>";
 		for(var j=0;j<rectLen;j++){
-			cont+='<td id="td'+i+j+'" onclick="selNo(this,'+i+','+j+')"><table>';
+			cont+='<td id="td'+i+j+'" onclick="selNo('+i+','+j+')"><table>';
 			cont+=('<tr>'+'<td></td>'.repeat(litLen)+'</tr>').repeat(litLen);
 			cont+='</table></td>';
 		}
@@ -60,12 +57,9 @@ function createBox(){
 	document.getElementById('box').innerHTML=cont;
 }
 
-//单元格点击事件
-function selNo(obj,i,j){
-	//记录点击对象和坐标
-	nowObj=obj;
-	nowCol=i;
-	nowRow=j;
+//单元格点击记录坐标
+function selNo(i,j){
+	nowCol=i;nowRow=j;
 }
 
 //输入数字
@@ -75,13 +69,11 @@ function setNo(event){
 	}else if(event.which){
 		keynum = event.which;
 	}
-	if(keynum>=49 && keynum<=57){
-		keynum-=48;
-	}else{
+	if(keynum<49 || keynum>57){
 		return false;
 	}
-	if(nowObj){
-		setData(nowCol,nowRow,keynum);
+	if(nowCol>-1 && nowRow>-1){
+		setData(nowCol,nowRow,keynum-48);
 	}
 }
 
@@ -90,17 +82,12 @@ function setData(i,j,value){
 	var tmpTdObj=document.getElementById('td'+i+j);
 	tmpTdObj.innerHTML=value;
 	tmpTdObj.style.color=nowColor;
-	document.getElementById('td'+i+j).innerHTML=value;
-	maxArr[i][j]=value;
-	console.log(i+"-"+j+'=>'+value);
-	
-	var funcName=function(x,y){
-		if(typeof maxArr[x][y]=='number'){
-			return 0;
+	maxArr[i][j]=value;	
+	runRelative(i,j,function(x,y){
+		if(typeof maxArr[x][y]!='number'){
+			delete maxArr[x][y][value];
 		}
-		delete maxArr[x][y][value];
-	};
-	runRelative(i,j,funcName);
+	});
 }
 
 //跑循环Run
@@ -115,26 +102,23 @@ function runXY(funcName){
 			var mayBe=maxArr[i][j];
 			if(typeof mayBe=='number'){
 				setData(i,j,mayBe);
-				AC+=1;
+				console.log(i+"-"+j+'=>'+mayBe);
+				AC++;
 				continue;
 			}
 			//如果不是确切值，填入它的可能值
 			miniTdList=document.getElementById('td'+i+j).querySelectorAll('td');
 			for(var x=0;x<rectLen;x++){
-				if(!mayBe[x+1]){
-					miniTdList[x].innerHTML='';
-				}else{
-					miniTdList[x].innerHTML=x+1;
-				}
+				miniTdList[x].innerHTML=!mayBe[x+1]?'':x+1;
 			}
 		}
 	}
 	return AC;
 }
 
-//跑相关
+//遍历目标的相关单元格
 function runRelative(col,row,funcName,before,after){
-	//x y 宫格
+	//同行 列 宫格
 	if(before) before(0);
 	for(var i=0;i<rectLen;i++){
 		funcName(col,i);
@@ -161,12 +145,11 @@ function runRelative(col,row,funcName,before,after){
 //唯一法
 function setMayBe(col,row){
 	var funcName=function(x,y){
-		if(x==col&&y==row){
-			return 0;
-		}
-		tempVar=maxArr[x][y];
-		if(typeof tempVar=='number'){
-			delete maxArr[col][row][tempVar];
+		if(x!=col || y!=row){
+			tempVar=maxArr[x][y];
+			if(typeof tempVar=='number'){
+				delete maxArr[col][row][tempVar];
+			}
 		}
 	};
 	runRelative(col,row,funcName);
@@ -181,13 +164,13 @@ function setMayBe(col,row){
 //隐含唯一法
 function tryMaybe(col,row){
 		runRelative(col,row,function(x,y){
-			if(x==col && y==row) return 0;
-			var tempVar=maxArr[x][y];
-			if(typeof tempVar=='number'){
-				return 0;
-			}
-			for(var key in tempVar){
-				delete window.tmpObject[key];
+			if(x!=col || y!=row){
+				var tempVar=maxArr[x][y];
+				if(typeof tempVar!='number'){
+					for(var key in tempVar){
+						delete window.tmpObject[key];
+					}
+				}
 			}
 		},function(step){
 			window.tmpObject=Object.assign({}, maxArr[col][row]);
@@ -222,8 +205,7 @@ function sameMaybe(col,row){
 			return ;
 		}
 		var removeMaybe=function(targetX,targetY){
-			if(typeof maxArr[targetX][targetY]=='number')
-			return ;
+			if(typeof maxArr[targetX][targetY]=='number')return ;
 			if(!window.tmpSaveObject[targetX+'-'+targetY]){
 				for(var key in maxArr[col][row]){
 					delete maxArr[targetX][targetY][key];
@@ -257,8 +239,7 @@ function run(){
 	var AC=0;
 	console.log("setMayBe");
 	nowColor='green';
-	while(runXY(setMayBe)>0){
-	}
+	while(runXY(setMayBe)>0){}
 	
 	nowColor='#FFFF00';
 	console.log("tryMaybe");
@@ -267,8 +248,8 @@ function run(){
 	nowColor='#FF0000';
 	console.log("sameMaybe");
 	AC+=runXY(sameMaybe);
-	while(runXY(setMayBe)>0){
-	}
+	while(runXY(setMayBe)>0){}
+	nowColor='';
 	if(AC>0){
 		run();
 	}
