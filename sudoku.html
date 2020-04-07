@@ -117,28 +117,34 @@ function runXY(funcName){
 }
 
 //遍历目标的相关单元格
-function runRelative(col,row,funcName,before,after){
-	//同行 列 宫格
-	if(before) before(0);
-	for(var i=0;i<rectLen;i++){
-		funcName(col,i);
-	}
-	if(after) after(0);
-	if(before) before(1);
-	for(var i=0;i<rectLen;i++){
-		funcName(i,row);
-	}
-	if(after) after(1);
-	if(before) before(2);
-	var bSqrt=Math.sqrt(rectLen);
-	var bCol=col-col%bSqrt;
-	var bRow=row-row%bSqrt;
-	for(var i=0;i<bSqrt;i++){
-		for(var j=0;j<bSqrt;j++){
-			funcName(bCol+i,bRow+j);
+function runRelative(col,row,funcName,before,after,rTarget){
+	//同行 列 宫格 rTarget=0为col一样 1为row一样 2为宫格一样
+	if(!rTarget || rTarget==0){
+		if(before) before(0);
+		for(var i=0;i<rectLen;i++){
+			funcName(col,i);
 		}
+		if(after) after(0);
 	}
-	if(after) after(2);
+	if(!rTarget || rTarget==1){
+		if(before) before(1);
+		for(var i=0;i<rectLen;i++){
+			funcName(i,row);
+		}
+		if(after) after(1);
+	}
+	if(!rTarget || rTarget==1){
+		if(before) before(2);
+		var bSqrt=Math.sqrt(rectLen);
+		var bCol=col-col%bSqrt;
+		var bRow=row-row%bSqrt;
+		for(var i=0;i<bSqrt;i++){
+			for(var j=0;j<bSqrt;j++){
+				funcName(bCol+i,bRow+j);
+			}
+		}
+		if(after) after(2);
+	}
 }
 
 //根据相关单元确定值，定位本单元可能值
@@ -212,26 +218,7 @@ function sameMaybe(col,row){
 				}
 			}
 		};
-		if(step==0){
-			for(var i=0;i<rectLen;i++){
-				removeMaybe(col,i);
-			}
-		}
-		if(step==1){
-			for(var i=0;i<rectLen;i++){
-				removeMaybe(i,row);
-			}
-		}
-		if(step==2){
-			var bSqrt=Math.sqrt(rectLen);
-			var bCol=col-col%bSqrt;
-			var bRow=row-row%bSqrt;
-			for(var i=0;i<bSqrt;i++){
-				for(var j=0;j<bSqrt;j++){
-					removeMaybe(bCol+i,bRow+j);
-				}
-			}
-		}
+		runRelative(col,row,removeMaybe,null,null,step);
 	});
 };
 
