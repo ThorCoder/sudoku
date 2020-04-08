@@ -30,9 +30,9 @@ td td{border:0 none;}
 <script>
 var nowCol=-1,nowRow=-1;//当前选中对象的行列号
 var rectLen=9;//9*9
-var nowColor;
 var maxArr=new Array(rectLen);	//第三维存可能值(对象)，否则为确切值(数字)
 var AC=0;//每次循环前置0
+var nowColor;
 //初始化
 function createBox(){
 	var tmpMayBeObj={};
@@ -81,17 +81,31 @@ function setNo(event){
 }
 
 //设置值并删除相关单元可能值
-function setData(i,j,value){
+function setData(i,j,value,targetColor){
+	console.log('%c'+i+"-"+j+'=>'+value,'color:'+(nowColor || targetColor));
 	AC++;
 	var tmpTdObj=document.getElementById('td'+i+j);
 	tmpTdObj.innerHTML=value;
-	tmpTdObj.style.color=nowColor;
-	maxArr[i][j]=value;	
+	tmpTdObj.style.color=nowColor || targetColor;
+	maxArr[i][j]=value;
+
 	runRelative(i,j,function(x,y){
 		if(typeof maxArr[x][y]!='number'){
 			delete maxArr[x][y][value];
+			var mayBeLen=Object.keys(maxArr[x][y]);
+			if(mayBeLen.length==1){
+				setData(x,y,mayBeLen[0]*1,'green');
+			}
 		}
 	});
+}
+//删除某单元可能值
+function delMaybe(col,row,value){
+	delete maxArr[col][row][value];
+	var tempArr=Object.keys(maxArr[col][row]);
+	if(tempArr.length==1){
+		setData(col,row,tempArr[0]*1);
+	}
 }
 
 //跑循环Run
@@ -104,16 +118,13 @@ function runXY(funcName){
 			}
 			funcName(i,j);
 			var mayBe=maxArr[i][j];
-			if(typeof mayBe=='number'){
-				setData(i,j,mayBe);
-				console.log(i+"-"+j+'=>'+mayBe);
-				continue;
+			if(typeof mayBe!='number'){
+				miniTdList=document.getElementById('td'+i+j).querySelectorAll('td');
+				for(var x=0;x<rectLen;x++){
+					miniTdList[x].innerHTML=!mayBe[x+1]?'':x+1;
+				}
 			}
-			//如果不是确切值，填入它的可能值
-			miniTdList=document.getElementById('td'+i+j).querySelectorAll('td');
-			for(var x=0;x<rectLen;x++){
-				miniTdList[x].innerHTML=!mayBe[x+1]?'':x+1;
-			}
+			
 		}
 	}
 	return AC;
@@ -151,137 +162,77 @@ function runRelative(col,row,funcName,before,after,rTarget=-1){
 	}
 }
 
-//根据相关单元确定值，排除本单元可能值
-//唯一法
-function setMayBe(col,row){
-	var funcName=function(x,y){
-		if(x!=col || y!=row){
-			tempVar=maxArr[x][y];
-			if(typeof tempVar=='number'){
-				delete maxArr[col][row][tempVar];
-			}
-		}
-	};
-	runRelative(col,row,funcName);
-	
-	var mayBe=Object.keys(maxArr[col][row]);
-	if(mayBe.length==1){
-		maxArr[col][row]=mayBe[0]*1;
-	}
-}
-
-//从唯一出现的可能值，确定单元值
-//隐含唯一法,包含了唯一法
-function tryMaybe(col,row){
-		runRelative(col,row,function(x,y){
-			if(x!=col || y!=row){
-				var tempVar=maxArr[x][y];
-				if(typeof tempVar!='number'){
-					for(var key in tempVar){
-						delete window.tmpObject[key];
-					}
-				}
-			}
-		},function(step){
-			window.tmpObject=Object.assign({}, maxArr[col][row]);
-		},function(step){
-			var tempArr=Object.keys(window.tmpObject);
-			if(tempArr.length==1){
-				maxArr[col][row]=tempArr[0]*1;
-			}
-		});
-	}
-
-//二对数排除可能值
-//数对、三链、...N链 5-9链，其实无实际意义
-function sameMaybe(col,row){
-	runRelative(col,row,function(x,y){
-		if(x==col && y==row) return 0;
-		var tempVar=maxArr[x][y];
-		if(window.tmpObject.keys.length>rectLen/2){return;}//
-		if(typeof tempVar=='number'){
-			return 0;
-		}
-		if(Object.keys(tempVar).sort().toString()==window.tmpObject.keys.sort().toString()){
-			window.tmpObject.nums++;
-			window.tmpObject.sameObj[x+'-'+y]=true;
-		}
-	},function(step){
-		window.tmpObject={
-			'keys':Object.keys(maxArr[col][row]),
-			'nums':1,			//记录可能值完全一样的格数
-			'sameObj':{}		//记录可能值完全一样的对象
-		}
-		window.tmpObject.sameObj[col+"-"+row]=true;
-	},function(step){
-		if(window.tmpObject.nums!=window.tmpObject.keys.length){////记录可能值长度和个数一样则为对数/3链...
-			return ;
-		}
-		if(window.tmpObject.keys.length>rectLen/2){console.log(col+'--'+row);return ;}	//
-		var removeMaybe=function(targetX,targetY){
-			if(typeof maxArr[targetX][targetY]=='number')return ;
-			if(!window.tmpObject.sameObj[targetX+'-'+targetY]){
-				for(var key in maxArr[col][row]){
-					delete maxArr[targetX][targetY][key];
-					var tempArr=Object.keys(maxArr[targetX][targetY]);
-					if(tempArr.length==1){
-						setData(targetX,targetY,tempArr[0]*1);//外部不会判断非target其他单元
-					}
-				}
-			}
-		};
-		runRelative(col,row,removeMaybe,null,null,step);
-	});
-};
-
-
-
-//隐含 唯一、数对、三链...N链,可再次执行sameMaybe确定确切值
+//隐含 唯一、数对、三链...N链
+//数对
 function trySameMaybe(col,row){
 	runRelative(col,row,function(x,y){
 		var tempVar=maxArr[x][y];
 		if(typeof tempVar=='number'){
-			return 0;
+			return;
 		}
+		//数对部分
+		if(Object.keys(tempVar).sort().toString()!=window.tmpNowCellArr.toString()){
+			window.tmpDifferObj.push([x,y]);
+		}else{
+			window.tmpSameNum++;
+		}
+		//end
+		//start 隐含数对
 		for(var key in tempVar){
 			if(!maxArr[col][row][key]){
-				continue;
+				continue;//只统计本单元内的数
 			}
-			if(!window.tmpObject[key]){
-				window.tmpObject[key]=new Array();
+			if(!window.hideSameObj[key]){
+				window.hideSameObj[key]=new Array();
 			}
-			window.tmpObject[key].push(x+'.'+y);
+			window.hideSameObj[key].push(x+'.'+y);
 		}
+		//end
 	},function(step){
-		window.tmpObject={};//key为数字-value为坐标数组
+		window.tmpDifferObj=new Array();//可能值不同的坐标
+		window.tmpSameNum=0;		//可能值相同的数量
+		window.tmpNowCellArr=Object.keys(maxArr[col][row]).sort();
+	
+		window.hideSameObj={};//隐含 数字-坐标（数组）
 	},function(step){
-		var total_num={};//key为次数-value为数字
-		for(var key in window.tmpObject){
-			var total=window.tmpObject[key].length;
-			if(!total_num[total]) total_num[total]={};
-			total_num[total][key]=true;
+	//数对
+		if(window.tmpSameNum==window.tmpNowCellArr.length){//判断是否为数对...
+			for(var i in window.tmpDifferObj){
+				var xy=window.tmpDifferObj[i];
+				for(var key in maxArr[col][row]){
+					delMaybe(xy[0],xy[1],key);
+				}
+			}
+			return;
 		}
-		for(var total in total_num){
-			if(total!=Object.keys(total_num[total]).length){//判断出现N次的有N个数则继续
-				continue;
+	//end
+		var totalNum={};//次数-数字（对象）
+		for(var key in window.hideSameObj){
+			var total=window.hideSameObj[key].length;
+			if(!totalNum[total]) totalNum[total]={};
+			totalNum[total][key]=true;
+		}
+		for(var total in totalNum){
+			if(total!=Object.keys(totalNum[total]).length){//出现N次的有N个数则继续
+				continue;//出现1次的有1个数 2次的有2个数
 			}
 			var sString='';
 			var canRemove=true;
-			for(var nums in total_num[total]){
-				sString=sString==''?window.tmpObject[nums].sort().toString():sString;
-				if(sString!=window.tmpObject[nums].sort().toString()){
+			for(var num in totalNum[total]){//保证这N个数字只出现在N个单元中
+				sString=sString==''?window.hideSameObj[num].sort().toString():sString;
+				if(sString!=window.hideSameObj[num].sort().toString()){
 					canRemove=false;break;
 				}
 			}
 			if(!canRemove) continue;
-			var setNo=Object.keys(total_num[total]);
+			var setNo=Object.keys(totalNum[total]);
 			if(setNo.length==1)setNo=setNo[0]*1;
-			else setNo=JSON.stringify(total_num[total]);
-			for(var num in total_num[total]){
-				for(var i in window.tmpObject[num]){
-					var xy=window.tmpObject[num][i].split('.');
+			else setNo=JSON.stringify(totalNum[total]);
+			for(var num in totalNum[total]){	//出现N次的N个数所在的N个坐标
+				for(var i in window.hideSameObj[num]){
+					var xy=window.hideSameObj[num][i].split('.');
 					if(typeof setNo=='number'){
-						setData(xy[0],xy[1],setNo);
+						setData(xy[0],xy[1],setNo,'red');
 						continue;
 					}
 					maxArr[xy[0]][xy[1]]=JSON.parse(setNo);
@@ -293,27 +244,10 @@ function trySameMaybe(col,row){
 	});
 };
 function run(){
-	var acRun=0;
-	console.log("setMayBe");
-	nowColor='green';
-	while(runXY(setMayBe)>0){}
-	
 	nowColor='blue';
-	console.log("tryMaybe");
-	acRun+=runXY(tryMaybe);
-	
-	nowColor='#FFFF00';
-	console.log("sameMaybe");
-	acRun+=runXY(sameMaybe);
-	while(runXY(setMayBe)>0){}
-	
-	nowColor='#FF0000';
-	console.log("trySameMaybe");
-	acRun+=runXY(trySameMaybe);
-	while(runXY(setMayBe)>0){}
-	
+	runXY(trySameMaybe);
 	nowColor='';
-	if(acRun>0){
+	if(AC>0){
 		run();
 	}
 }
