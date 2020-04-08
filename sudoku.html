@@ -91,11 +91,7 @@ function setData(i,j,value,targetColor){
 
 	runRelative(i,j,function(x,y){
 		if(typeof maxArr[x][y]!='number'){
-			delete maxArr[x][y][value];
-			var mayBeLen=Object.keys(maxArr[x][y]);
-			if(mayBeLen.length==1){
-				setData(x,y,mayBeLen[0]*1,'green');
-			}
+			delMaybe(x,y,value);
 		}
 	});
 }
@@ -145,7 +141,6 @@ function runRelative(col,row,funcName,before,after){
 		funcName(i,row);
 	}
 	if(after) after(1);
-
 
 	if(before) before(2);
 	var bSqrt=Math.sqrt(rectLen);
