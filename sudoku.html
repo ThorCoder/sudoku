@@ -132,34 +132,31 @@ function runXY(funcName){
 
 
 //遍历目标的相关单元格
-function runRelative(col,row,funcName,before,after,rTarget=-1){
+function runRelative(col,row,funcName,before,after){
 	//同行 列 宫格 rTarget=0为col一样 1为row一样 2为宫格一样
-	if(rTarget==-1 || rTarget==0){
-		if(before) before(0);
-		for(var i=0;i<rectLen;i++){
-			funcName(col,i);
-		}
-		if(after) after(0);
+	if(before) before(0);
+	for(var i=0;i<rectLen;i++){
+		funcName(col,i);
 	}
-	if(rTarget==-1 || rTarget==1){
-		if(before) before(1);
-		for(var i=0;i<rectLen;i++){
-			funcName(i,row);
-		}
-		if(after) after(1);
+	if(after) after(0);
+
+	if(before) before(1);
+	for(var i=0;i<rectLen;i++){
+		funcName(i,row);
 	}
-	if(rTarget==-1 || rTarget==2){
-		if(before) before(2);
-		var bSqrt=Math.sqrt(rectLen);
-		var bCol=col-col%bSqrt;
-		var bRow=row-row%bSqrt;
-		for(var i=0;i<bSqrt;i++){
-			for(var j=0;j<bSqrt;j++){
-				funcName(bCol+i,bRow+j);
-			}
+	if(after) after(1);
+
+
+	if(before) before(2);
+	var bSqrt=Math.sqrt(rectLen);
+	var bCol=col-col%bSqrt;
+	var bRow=row-row%bSqrt;
+	for(var i=0;i<bSqrt;i++){
+		for(var j=0;j<bSqrt;j++){
+			funcName(bCol+i,bRow+j);
 		}
-		if(after) after(2);
 	}
+	if(after) after(2);
 }
 
 //隐含 唯一、数对、三链...N链
@@ -214,19 +211,19 @@ function trySameMaybe(col,row){
 		}
 		for(var total in totalNum){
 			if(total!=Object.keys(totalNum[total]).length){//出现N次的有N个数则继续
-				continue;//出现1次的有1个数 2次的有2个数
+				continue;
 			}
 			var sString='';
 			var canRemove=true;
 			for(var num in totalNum[total]){//保证这N个数字只出现在N个单元中
-				sString=sString==''?window.hideSameObj[num].sort().toString():sString;
+				if(sString=='')sString=window.hideSameObj[num].sort().toString();
 				if(sString!=window.hideSameObj[num].sort().toString()){
 					canRemove=false;break;
 				}
 			}
 			if(!canRemove) continue;
 			var setNo=Object.keys(totalNum[total]);
-			if(setNo.length==1)setNo=setNo[0]*1;
+			if(setNo.length==1)setNo=setNo[0]*1;//隐含唯一
 			else setNo=JSON.stringify(totalNum[total]);
 			for(var num in totalNum[total]){	//出现N次的N个数所在的N个坐标
 				for(var i in window.hideSameObj[num]){
@@ -238,6 +235,7 @@ function trySameMaybe(col,row){
 					maxArr[xy[0]][xy[1]]=JSON.parse(setNo);
 				}
 			}
+			return ;
 		}
 		
 		
